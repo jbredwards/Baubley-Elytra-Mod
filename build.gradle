@@ -56,12 +56,12 @@ processResources {
 jar {
     manifest {
         attributes(
-                'FMLCorePlugin': 'git.jbredwards.baubleye.asm.ASMHandler',
+                'FMLCorePlugin': 'git.jbredwards.baubleye.BaubleyElytra',
                 'FMLCorePluginContainsFMLMod': 'true'
         )
     }
 }
 
 //for applying asm with intellij
-runClient { jvmArgs '-Dfml.coreMods.load=git.jbredwards.baubleye.asm.ASMHandler' }
-runServer { jvmArgs '-Dfml.coreMods.load=git.jbredwards.baubleye.asm.ASMHandler' }
+runClient { jvmArgs '-Dfml.coreMods.load=git.jbredwards.baubleye.BaubleyElytra' }
+runServer { jvmArgs '-Dfml.coreMods.load=git.jbredwards.baubleye.BaubleyElytra' }
