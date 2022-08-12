@@ -32,8 +32,9 @@ import java.util.Map;
  *
  */
 @IFMLLoadingPlugin.SortingIndex(1001)
+@IFMLLoadingPlugin.MCVersion("1.12.2")
 @IFMLLoadingPlugin.Name("Baubley Elytra Plugin")
-@Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.0", dependencies = "required-after:baubles")
+@Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.1", dependencies = "required-after:baubles")
 public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
 {
     /**
@@ -51,7 +52,7 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
                 .put("net.minecraft.entity.EntityLivingBase"                   , Pair.of("updateElytra"        , "func_184616_r"))
                 .put("net.minecraft.item.ItemElytra"                           , Pair.of("onItemRightClick"    , "func_77659_a"))
                 .put("net.minecraft.network.NetHandlerPlayServer"              , Pair.of("processEntityAction" , "func_147357_a"))
-                .put("vazkii.quark.vanity.client.layer.LayerBetterElytra"      , Pair.of("doRenderLayer"       , "func_177141_a"))
+                .put("vazkii.quark.vanity.client.layer.LayerBetterElytra"      , Pair.of("doRenderLayer"       , "doRenderLayer"))
                 .build();
 
         @Override
@@ -77,7 +78,7 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
                                 if(insn.getOpcode() == GETSTATIC && ((FieldInsnNode)insn).name.equals("FAIL")) {
                                     if(!FMLLaunchHandler.isDeobfuscatedEnvironment()) { //needed when outside intellij, kinda wack lol
                                         final AbstractInsnNode frame = insn.getPrevious().getPrevious().getPrevious();
-                                        method.instructions.insertBefore(frame, new FrameNode(F_APPEND, 3, new Object[] {"net/minecraft/item/ItemStack", "net/minecraft/inventory/EntityEquipmentSlot", "net/minecraft/item/ItemStack"}, 0, null));
+                                        method.instructions.insert(frame, new FrameNode(F_APPEND, 3, new Object[] {"net/minecraft/item/ItemStack", "net/minecraft/inventory/EntityEquipmentSlot", "net/minecraft/item/ItemStack"}, 0, null));
                                         method.instructions.remove(frame);
                                     }
 
@@ -135,7 +136,7 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
             if(handler.getStackInSlot(5).isEmpty()) {
                 handler.setStackInSlot(5, held.copy());
                 player.playSound(SoundEvents.ITEM_ARMOR_EQIIP_ELYTRA, 1, 1);
-                held.setCount(0);
+                held.shrink(1);
 
                 return EnumActionResult.SUCCESS;
             }
@@ -149,7 +150,9 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
         @Nonnull
         public static ItemStack getElytra(@Nonnull EntityLivingBase entity) {
             final ItemStack armor = entity.getItemStackFromSlot(EntityEquipmentSlot.CHEST);
-            if(armor.getItem() instanceof ItemElytra) return armor;
+            //check isUsable to allow the bauble to be selected if the armor elytra is out of durability
+            //this effectively lets players wear two elytra at once (where the bauble one is a fallback)!
+            if(armor.getItem() instanceof ItemElytra && ItemElytra.isUsable(armor)) return armor;
             else if(entity instanceof EntityPlayer) {
                 final ItemStack bauble = BaublesApi.getBaublesHandler((EntityPlayer)entity).getStackInSlot(5);
                 if(bauble.getItem() instanceof ItemElytra) return bauble;
