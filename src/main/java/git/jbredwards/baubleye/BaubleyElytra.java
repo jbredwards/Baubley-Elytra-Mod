@@ -5,6 +5,7 @@ import baubles.api.BaublesApi;
 import baubles.api.IBauble;
 import baubles.api.cap.IBaublesItemHandler;
 import com.google.common.collect.ImmutableMap;
+import io.netty.buffer.ByteBuf;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.SoundEvents;
@@ -12,6 +13,7 @@ import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.ItemElytra;
 import net.minecraft.item.ItemStack;
 import net.minecraft.launchwrapper.IClassTransformer;
+import net.minecraft.network.PacketBuffer;
 import net.minecraft.util.EnumActionResult;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.relauncher.FMLLaunchHandler;
@@ -24,7 +26,9 @@ import org.objectweb.asm.tree.*;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.IOException;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  *
@@ -34,7 +38,7 @@ import java.util.Map;
 @IFMLLoadingPlugin.SortingIndex(1001)
 @IFMLLoadingPlugin.MCVersion("1.12.2")
 @IFMLLoadingPlugin.Name("Baubley Elytra Plugin")
-@Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.1", dependencies = "required-after:baubles")
+@Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.2", dependencies = "required-after:baubles")
 public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
 {
     /**
@@ -46,23 +50,28 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
     {
         @Nonnull
         static final Map<String, Pair<String, String>> CHEST_TO_BAUBLE = ImmutableMap.<String, Pair<String, String>>builder()
+                //mod support
+                .put("git.jbredwards.customizableelytra.mod.client.layer.LayerCustomizableElytra", Pair.of("doRenderLayer", "func_177141_a"))
+                .put("vazkii.quark.vanity.client.layer.LayerBetterElytra", Pair.of("doRenderLayer", "doRenderLayer"))
+                //vanilla
                 .put("net.minecraft.client.entity.EntityPlayerSP"              , Pair.of("onLivingUpdate"      , "func_70636_d"))
                 .put("net.minecraft.client.renderer.entity.layers.LayerCape"   , Pair.of("doRenderLayer"       , "func_177141_a"))
                 .put("net.minecraft.client.renderer.entity.layers.LayerElytra" , Pair.of("doRenderLayer"       , "func_177141_a"))
                 .put("net.minecraft.entity.EntityLivingBase"                   , Pair.of("updateElytra"        , "func_184616_r"))
                 .put("net.minecraft.item.ItemElytra"                           , Pair.of("onItemRightClick"    , "func_77659_a"))
                 .put("net.minecraft.network.NetHandlerPlayServer"              , Pair.of("processEntityAction" , "func_147357_a"))
-                .put("vazkii.quark.vanity.client.layer.LayerBetterElytra"      , Pair.of("doRenderLayer"       , "doRenderLayer"))
                 .build();
 
         @Override
         public byte[] transform(@Nonnull String name, @Nonnull String transformedName, @Nonnull byte[] basicClass) {
-            if(CHEST_TO_BAUBLE.containsKey(transformedName)) {
+            //ensure baubles properly syncs item capabilities (this is a problem that happens with customizable elytra)
+            final boolean isPacketSyncFix = "baubles.common.network.PacketSync".equals(transformedName);
+            if(isPacketSyncFix || CHEST_TO_BAUBLE.containsKey(transformedName)) {
                 final ClassNode classNode = new ClassNode();
                 new ClassReader(basicClass).accept(classNode, 0);
 
                 //use obfuscated method name if necessary
-                final String methodName = FMLLaunchHandler.isDeobfuscatedEnvironment()
+                String methodName = isPacketSyncFix ? "toBytes" : FMLLaunchHandler.isDeobfuscatedEnvironment()
                         ? CHEST_TO_BAUBLE.get(transformedName).getLeft()
                         : CHEST_TO_BAUBLE.get(transformedName).getRight();
 
@@ -87,6 +96,22 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
                                     method.instructions.insertBefore(insn, new MethodInsnNode(INVOKESTATIC, "git/jbredwards/baubleye/BaubleyElytra$Hooks", "equipElytraBauble", "(Lnet/minecraft/entity/player/EntityPlayer;Lnet/minecraft/item/ItemStack;)Lnet/minecraft/util/EnumActionResult;", false));
                                     method.instructions.remove(insn);
                                     break all;
+                                }
+                            }
+
+                            //fix baubles packets
+                            else if(isPacketSyncFix) {
+                                if(insn.getOpcode() == INVOKESTATIC) {
+                                    if(((MethodInsnNode)insn).name.equals("writeItemStack")) {
+                                        ((MethodInsnNode)insn).owner = "git/jbredwards/baubleye/BaubleyElytra$Hooks";
+                                        methodName = "fromBytes";
+                                        break;
+                                    }
+
+                                    else if(((MethodInsnNode)insn).name.equals("readItemStack")) {
+                                        ((MethodInsnNode)insn).owner = "git/jbredwards/baubleye/BaubleyElytra$Hooks";
+                                        break all;
+                                    }
                                 }
                             }
 
@@ -159,6 +184,19 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
             }
 
             return armor;
+        }
+
+        //ensure baubles item capability data is synced
+        public static void writeItemStack(@Nonnull ByteBuf to, @Nonnull ItemStack stack) {
+            new PacketBuffer(to).writeCompoundTag(stack.serializeNBT());
+        }
+
+        //ensure baubles item capability data is synced
+        @Nonnull
+        public static ItemStack readItemStack(@Nonnull ByteBuf to) {
+            try { return new ItemStack(Objects.requireNonNull(new PacketBuffer(to).readCompoundTag())); }
+            // Unpossible?
+            catch(IOException e) { throw new RuntimeException(e); }
         }
     }
 
