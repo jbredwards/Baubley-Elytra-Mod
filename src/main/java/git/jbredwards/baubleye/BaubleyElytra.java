@@ -15,7 +15,11 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.network.PacketBuffer;
 import net.minecraft.util.EnumActionResult;
+import net.minecraftforge.common.config.Config;
+import net.minecraftforge.common.config.ConfigManager;
+import net.minecraftforge.fml.client.event.ConfigChangedEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.relauncher.FMLLaunchHandler;
 import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
 import org.apache.commons.lang3.tuple.Pair;
@@ -144,7 +148,7 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
     {
         @Nonnull
         @Override
-        default BaubleType getBaubleType(@Nonnull ItemStack itemstack) { return BaubleType.BODY; }
+        default BaubleType getBaubleType(@Nonnull ItemStack itemstack) { return ConfigHandler.baubleType; }
 
         @Nullable
         @Override
@@ -158,12 +162,14 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
         @Nonnull
         public static EnumActionResult equipElytraBauble(@Nonnull EntityPlayer player, @Nonnull ItemStack held) {
             final IBaublesItemHandler handler = BaublesApi.getBaublesHandler(player);
-            if(handler.getStackInSlot(5).isEmpty()) {
-                handler.setStackInSlot(5, held.copy());
-                player.playSound(SoundEvents.ITEM_ARMOR_EQIIP_ELYTRA, 1, 1);
-                held.shrink(1);
+            for(int i : ConfigHandler.baubleType.getValidSlots()) {
+                if(handler.getStackInSlot(i).isEmpty()) {
+                    handler.setStackInSlot(i, held.copy());
+                    player.playSound(SoundEvents.ITEM_ARMOR_EQIIP_ELYTRA, 1, 1);
+                    held.shrink(1);
 
-                return EnumActionResult.SUCCESS;
+                    return EnumActionResult.SUCCESS;
+                }
             }
 
             return EnumActionResult.FAIL;
@@ -179,8 +185,11 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
             //this effectively lets players wear two elytra at once (where the bauble one is a fallback)!
             if(armor.getItem() instanceof ItemElytra && ItemElytra.isUsable(armor)) return armor;
             else if(entity instanceof EntityPlayer) {
-                final ItemStack bauble = BaublesApi.getBaublesHandler((EntityPlayer)entity).getStackInSlot(5);
-                if(bauble.getItem() instanceof ItemElytra) return bauble;
+                final IBaublesItemHandler handler = BaublesApi.getBaublesHandler((EntityPlayer)entity);
+                for(int i : ConfigHandler.baubleType.getValidSlots()) {
+                    final ItemStack stack = handler.getStackInSlot(i);
+                    if(stack.getItem() instanceof ItemElytra) return stack;
+                }
             }
 
             return armor;
@@ -197,6 +206,20 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
             try { return new ItemStack(Objects.requireNonNull(new PacketBuffer(to).readCompoundTag())); }
             // Unpossible?
             catch(IOException e) { throw new RuntimeException(e); }
+        }
+    }
+
+    @SuppressWarnings("unused")
+    @Config(modid = "baubleye")
+    @Mod.EventBusSubscriber(modid = "baubleye")
+    public static final class ConfigHandler
+    {
+        @Config.LangKey("config.baubleye.slot")
+        @Nonnull public static BaubleType baubleType = BaubleType.BODY;
+
+        @SubscribeEvent
+        public static void sync(@Nonnull ConfigChangedEvent.OnConfigChangedEvent event) {
+            if("baubleye".equals(event.getModID())) ConfigManager.sync("baubleye", Config.Type.INSTANCE);
         }
     }
 

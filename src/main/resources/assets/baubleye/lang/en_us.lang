@@ -1,0 +1,2 @@
+config.baubleye.slot=Elytra Bauble Slot
+config.baubleye.slot.tooltip=Possible values: AMULET, RING, BELT, TRINKET, HEAD, BODY, CHARM.
