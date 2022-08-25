@@ -6,6 +6,7 @@ import baubles.api.IBauble;
 import baubles.api.cap.IBaublesItemHandler;
 import com.google.common.collect.ImmutableMap;
 import io.netty.buffer.ByteBuf;
+import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.SoundEvents;
@@ -42,7 +43,7 @@ import java.util.Objects;
 @IFMLLoadingPlugin.SortingIndex(1001)
 @IFMLLoadingPlugin.MCVersion("1.12.2")
 @IFMLLoadingPlugin.Name("Baubley Elytra Plugin")
-@Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.2", dependencies = "required-after:baubles")
+@Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.2b", dependencies = "required-after:baubles")
 public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
 {
     /**
@@ -56,6 +57,8 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
         static final Map<String, Pair<String, String>> CHEST_TO_BAUBLE = ImmutableMap.<String, Pair<String, String>>builder()
                 //mod support
                 .put("git.jbredwards.customizableelytra.mod.client.layer.LayerCustomizableElytra", Pair.of("doRenderLayer", "func_177141_a"))
+                .put("goblinbob.mobends.standard.client.renderer.entity.layers.LayerCustomCape", Pair.of("doRenderLayer", "func_177141_a"))
+                .put("goblinbob.mobends.standard.client.renderer.entity.layers.LayerCustomElytra", Pair.of("doRenderLayer", "func_177141_a"))
                 .put("vazkii.quark.vanity.client.layer.LayerBetterElytra", Pair.of("doRenderLayer", "doRenderLayer"))
                 //vanilla
                 .put("net.minecraft.client.entity.EntityPlayerSP"              , Pair.of("onLivingUpdate"      , "func_70636_d"))
@@ -148,13 +151,13 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
     {
         @Nonnull
         @Override
-        default BaubleType getBaubleType(@Nonnull ItemStack itemstack) { return ConfigHandler.baubleType; }
+        default BaubleType getBaubleType(@Nonnull ItemStack stack) { return ConfigHandler.baubleType; }
 
-        @Nullable
         @Override
-        default String getUnlocalizedName(@Nonnull ItemStack par1ItemStack) { return null; }
+        default boolean canUnequip(@Nonnull ItemStack stack, @Nonnull EntityLivingBase player) {
+            return !EnchantmentHelper.hasBindingCurse(stack);
+        }
     }
-
 
     @SuppressWarnings("unused")
     public static final class Hooks
