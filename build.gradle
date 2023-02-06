@@ -11,7 +11,7 @@ buildscript {
 apply plugin: 'net.minecraftforge.gradle.forge'
 apply plugin: 'maven-publish'
 
-version = 'v1.2b-mc1.12.2'
+version = 'v1.3-mc1.12.2'
 group = 'git.jbredwards.baubleye'
 archivesBaseName = 'Baubley-Elytra'
 sourceCompatibility = targetCompatibility = '1.8'
@@ -24,13 +24,19 @@ minecraft {
 }
 
 dependencies {
-    //baubles
     deobfCompile "com.github.jbredwards:Baubles:${baubles_version}"
+
+    //cofhcore soulbound baubles fix
+    deobfProvided "cofh:CoFHCore:1.12.2-${cofh_core_version}:universal"
+    deobfProvided "mezz.jei:jei_1.12.2:${jei_version}"
 }
 
 repositories {
-    //baubles
     maven { url 'https://jitpack.io' }
+
+    //cofhcore soulbound baubles fix
+    maven { url 'https://maven.covers1624.net' }
+    maven { url 'https://dvs1.progwml6.com/files/maven' }
 }
 
 processResources {

@@ -1,2 +1,4 @@
+config.baubleye.creativeAccessibility=Creative Baubles Accessibility
+config.baubleye.creativeAccessibility.tooltip=True if the Baubles inventory button should be added to the creative inventory.
 config.baubleye.slot=Elytra Bauble Slot
 config.baubleye.slot.tooltip=Possible values: AMULET, RING, BELT, TRINKET, HEAD, BODY, CHARM.
