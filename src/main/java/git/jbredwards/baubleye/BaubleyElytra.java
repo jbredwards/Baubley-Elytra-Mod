@@ -30,6 +30,8 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.relauncher.FMLLaunchHandler;
 import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.commons.lang3.tuple.Pair;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
@@ -51,7 +53,7 @@ import java.util.Objects;
 @IFMLLoadingPlugin.SortingIndex(1001)
 @IFMLLoadingPlugin.MCVersion("1.12.2")
 @IFMLLoadingPlugin.Name("Baubley Elytra Plugin")
-@Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.3", dependencies = "required-after:baubles")
+@Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.3.1", dependencies = "required-after:baubles")
 public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
 {
     /**
@@ -282,7 +284,9 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
             return stack.isEmpty() || !player.isCreative() && EnchantmentHelper.hasBindingCurse(stack);
         }
 
+        @SideOnly(Side.CLIENT)
         public static void onBaublesButtonMouseReleased(@Nonnull GuiContainer parentGui) {
+            ButtonSoundPlayer.playButtonClickSound();
             //open parent inventory
             if(parentGui instanceof GuiPlayerExpanded) {
                 ((GuiPlayerExpanded)parentGui).displayNormalInventory();
@@ -290,6 +294,14 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
             }
             //open baubles inventory
             else PacketHandler.INSTANCE.sendToServer(new PacketOpenBaublesInventory());
+        }
+    }
+
+    //needed to fix issue#3, prevents client class from being loaded serverside
+    private static class ButtonSoundPlayer
+    {
+        @SideOnly(Side.CLIENT)
+        static void playButtonClickSound() {
             Minecraft.getMinecraft().getSoundHandler().playSound(PositionedSoundRecord.getMasterRecord(SoundEvents.UI_BUTTON_CLICK, 1));
         }
     }
