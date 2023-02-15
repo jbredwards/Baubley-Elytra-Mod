@@ -2,7 +2,7 @@ package git.jbredwards.baubleye;
 
 import baubles.api.BaubleType;
 import baubles.api.BaublesApi;
-import baubles.api.IBauble;
+import baubles.api.cap.BaublesCapabilities;
 import baubles.api.cap.IBaublesItemHandler;
 import baubles.client.gui.GuiPlayerExpanded;
 import baubles.common.network.PacketHandler;
@@ -23,8 +23,13 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.network.PacketBuffer;
 import net.minecraft.util.EnumActionResult;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.common.config.Config;
 import net.minecraftforge.common.config.ConfigManager;
+import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.fml.client.event.ConfigChangedEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -50,10 +55,10 @@ import java.util.Objects;
  * @author jbred
  *
  */
-@IFMLLoadingPlugin.SortingIndex(1001)
+@IFMLLoadingPlugin.SortingIndex(1006)
 @IFMLLoadingPlugin.MCVersion("1.12.2")
 @IFMLLoadingPlugin.Name("Baubley Elytra Plugin")
-@Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.3.1", dependencies = "required-after:baubles")
+@Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.3.2", dependencies = "required-after:baubles")
 public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
 {
     /**
@@ -137,16 +142,11 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
                             ? OBFUSCATION_MAP.get(transformedName).getLeft()
                             : OBFUSCATION_MAP.get(transformedName).getRight();
 
-
-                    //ItemElytra implements IBauble at runtime
-                    final boolean isItemElytra = "net.minecraft.item.ItemElytra".equals(transformedName);
-                    if(isItemElytra) classNode.interfaces.add("git/jbredwards/baubleye/BaubleyElytra$IElytraBauble");
-
                     all: //iterate through all the instructions to fix all hardcoded vanilla elytra checks
                     for(MethodNode method : classNode.methods) {
                         if(method.name.equals(methodName)) {
                             for(AbstractInsnNode insn : method.instructions.toArray()) {
-                                if(isItemElytra) { //allow players to right-click elytra to put it in the baubles slot
+                                if("net.minecraft.item.ItemElytra".equals(transformedName)) { //allow players to right-click elytra to put it in the baubles slot
                                     if(insn.getOpcode() == GETSTATIC && ((FieldInsnNode)insn).name.equals("FAIL")) {
                                         if(!FMLLaunchHandler.isDeobfuscatedEnvironment()) { //needed when outside intellij, kinda wack lol
                                             final AbstractInsnNode frame = insn.getPrevious().getPrevious().getPrevious();
@@ -190,9 +190,8 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
 
                                 //fix elytra checks
                                 else if(insn.getOpcode() == INVOKEVIRTUAL && ((MethodInsnNode)insn).name.equals(FMLLaunchHandler.isDeobfuscatedEnvironment() ? "getItemStackFromSlot" : "func_184582_a")) {
-                                    method.instructions.insert(insn, new MethodInsnNode(INVOKESTATIC, "git/jbredwards/baubleye/BaubleyElytra$Hooks", "getElytra", "(Lnet/minecraft/entity/EntityLivingBase;)Lnet/minecraft/item/ItemStack;", false));
-                                    method.instructions.remove(insn.getPrevious());
-                                    method.instructions.remove(insn);
+                                    method.instructions.insert(insn, new MethodInsnNode(INVOKESTATIC, "git/jbredwards/baubleye/BaubleyElytra$Hooks", "getElytra", "(Lnet/minecraft/item/ItemStack;Lnet/minecraft/entity/EntityLivingBase;)Lnet/minecraft/item/ItemStack;", false));
+                                    carryOverEntity(method.instructions, insn, insn.getPrevious().getPrevious());
                                     break all;
                                 }
                             }
@@ -208,17 +207,16 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
 
             return basicClass;
         }
-    }
 
-    /**
-     * Implemented by {@link ItemElytra} at runtime
-     */
-    @SuppressWarnings("unused")
-    public interface IElytraBauble extends IBauble
-    {
-        @Nonnull
-        @Override
-        default BaubleType getBaubleType(@Nonnull ItemStack stack) { return ConfigHandler.baubleType; }
+        //internal, used for thaumic augmentation compat
+        static void carryOverEntity(@Nonnull InsnList instructions, @Nonnull AbstractInsnNode location, @Nonnull AbstractInsnNode entity) {
+            if(entity instanceof VarInsnNode) instructions.insert(location, new VarInsnNode(entity.getOpcode(), ((VarInsnNode)entity).var));
+            else if(entity instanceof FieldInsnNode) {
+                final FieldInsnNode field = (FieldInsnNode)entity;
+                instructions.insert(location, new FieldInsnNode(field.getOpcode(), field.owner, field.name, field.desc));
+                carryOverEntity(instructions, location, field.getPrevious()); //carry over field owner
+            }
+        }
     }
 
     @SuppressWarnings("unused")
@@ -227,7 +225,7 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
         @Nonnull
         public static EnumActionResult equipElytraBauble(@Nonnull EntityPlayer player, @Nonnull ItemStack held) {
             final IBaublesItemHandler handler = BaublesApi.getBaublesHandler(player);
-            for(int i : ConfigHandler.baubleType.getValidSlots()) {
+            for(int i : ConfigHandler.BAUBLE_TYPE.getValidSlots()) {
                 if(handler.getStackInSlot(i).isEmpty()) {
                     handler.setStackInSlot(i, held.copy());
                     player.playSound(SoundEvents.ITEM_ARMOR_EQIIP_ELYTRA, 1, 1);
@@ -244,8 +242,7 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
          * Used in place of {@link EntityLivingBase#getItemStackFromSlot(EntityEquipmentSlot)} when getting elytra
          */
         @Nonnull
-        public static ItemStack getElytra(@Nonnull EntityLivingBase entity) {
-            final ItemStack armor = entity.getItemStackFromSlot(EntityEquipmentSlot.CHEST);
+        public static ItemStack getElytra(@Nonnull ItemStack armor, @Nonnull EntityLivingBase entity) {
             //check isUsable to allow the bauble to be selected if the armor elytra is out of durability
             //this effectively lets players wear two elytra at once (where the bauble one is a fallback)!
             if(armor.getItem() instanceof ItemElytra && ItemElytra.isUsable(armor)) return armor;
@@ -253,7 +250,7 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
                 final IBaublesItemHandler handler = BaublesApi.getBaublesHandler((EntityPlayer)entity);
                 ItemStack ret = ItemStack.EMPTY;
 
-                for(int i : ConfigHandler.baubleType.getValidSlots()) {
+                for(int i : ConfigHandler.BAUBLE_TYPE.getValidSlots()) {
                     final ItemStack stack = handler.getStackInSlot(i);
                     if(stack.getItem() instanceof ItemElytra) {
                         if(ItemElytra.isUsable(stack)) return stack;
@@ -314,11 +311,30 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
         public static boolean creativeAccessibility = true;
 
         @Config.LangKey("config.baubleye.slot")
-        @Nonnull public static BaubleType baubleType = BaubleType.BODY;
+        @Nonnull public static BaubleType BAUBLE_TYPE = BaubleType.BODY;
+        @Nonnull static final ResourceLocation CAPABILITY_ID = new ResourceLocation("baubleye", "elytra");
 
         @SubscribeEvent
         public static void sync(@Nonnull ConfigChangedEvent.OnConfigChangedEvent event) {
             if("baubleye".equals(event.getModID())) ConfigManager.sync("baubleye", Config.Type.INSTANCE);
+        }
+
+        @SubscribeEvent
+        public static void makeElytraBauble(@Nonnull AttachCapabilitiesEvent<ItemStack> event) {
+            if(event.getObject().getItem() instanceof ItemElytra && !event.getObject().hasCapability(BaublesCapabilities.CAPABILITY_ITEM_BAUBLE, null)) {
+                event.addCapability(CAPABILITY_ID, new ICapabilityProvider() {
+                    @Override
+                    public boolean hasCapability(@Nonnull Capability<?> capability, @Nullable EnumFacing facing) {
+                        return capability == BaublesCapabilities.CAPABILITY_ITEM_BAUBLE;
+                    }
+
+                    @Nullable
+                    @Override
+                    public <T> T getCapability(@Nonnull Capability<T> capability, @Nullable EnumFacing facing) {
+                        return hasCapability(capability, facing) ? BaublesCapabilities.CAPABILITY_ITEM_BAUBLE.cast(stack -> BAUBLE_TYPE) : null;
+                    }
+                });
+            }
         }
     }
 
