@@ -13,6 +13,7 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
@@ -47,6 +48,7 @@ import org.objectweb.asm.tree.*;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -58,7 +60,7 @@ import java.util.Objects;
 @IFMLLoadingPlugin.SortingIndex(1006)
 @IFMLLoadingPlugin.MCVersion("1.12.2")
 @IFMLLoadingPlugin.Name("Baubley Elytra Plugin")
-@Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.3.2", dependencies = "required-after:baubles")
+@Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.3.3", dependencies = "required-after:baubles")
 public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
 {
     /**
@@ -82,6 +84,7 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
                 .put("net.minecraft.client.entity.EntityPlayerSP"              , Pair.of("onLivingUpdate"      , "func_70636_d"))
                 .put("net.minecraft.client.renderer.entity.layers.LayerCape"   , Pair.of("doRenderLayer"       , "func_177141_a"))
                 .put("net.minecraft.client.renderer.entity.layers.LayerElytra" , Pair.of("doRenderLayer"       , "func_177141_a"))
+                .put("net.minecraft.enchantment.Enchantment"                   , Pair.of("getEntityEquipment"  , "func_185260_a"))
                 .put("net.minecraft.entity.EntityLivingBase"                   , Pair.of("updateElytra"        , "func_184616_r"))
                 .put("net.minecraft.item.ItemElytra"                           , Pair.of("onItemRightClick"    , "func_77659_a"))
                 .put("net.minecraft.network.NetHandlerPlayServer"              , Pair.of("processEntityAction" , "func_147357_a"))
@@ -184,6 +187,20 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
                                         method.instructions.insert(insn, new MethodInsnNode(INVOKESTATIC, "git/jbredwards/baubleye/BaubleyElytra$Hooks", "isEmptyOrHasBindingCurse", "(Lnet/minecraft/item/ItemStack;Lnet/minecraft/entity/player/EntityPlayer;)Z", false));
                                         method.instructions.insert(insn, new VarInsnNode(ALOAD, 1));
                                         method.instructions.remove(insn);
+                                        break all;
+                                    }
+                                }
+
+                                //fix baubles enchantment logic
+                                else if("net.minecraft.enchantment.Enchantment".equals(transformedName)) {
+                                    if(insn.getOpcode() == ARETURN) {
+                                        final InsnList list = new InsnList();
+                                        list.add(new VarInsnNode(ALOAD, 0));
+                                        list.add(new VarInsnNode(ALOAD, 1));
+                                        list.add(new VarInsnNode(ALOAD, 2));
+                                        list.add(new MethodInsnNode(INVOKESTATIC, "git/jbredwards/baubleye/BaubleyElytra$Hooks", "handleEnchantedBaubles", "(Lnet/minecraft/enchantment/Enchantment;Lnet/minecraft/entity/EntityLivingBase;Ljava/util/List;)V", false));
+
+                                        method.instructions.insertBefore(insn.getPrevious(), list);
                                         break all;
                                     }
                                 }
@@ -291,6 +308,39 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
             }
             //open baubles inventory
             else PacketHandler.INSTANCE.sendToServer(new PacketOpenBaublesInventory());
+        }
+
+        public static void handleEnchantedBaubles(@Nonnull Enchantment ench, @Nonnull EntityLivingBase entity, @Nonnull List<ItemStack> validItems) {
+            if(entity instanceof EntityPlayer && ench.type != null) {
+                final IBaublesItemHandler handler = BaublesApi.getBaublesHandler((EntityPlayer)entity);
+                if(handler != null) {
+                    int[] slots = null;
+                    switch(ench.type) { //certain enchantments only apply to certain slots, my best attempt at translating that
+                        case ARMOR_HEAD:
+                            slots = BaubleType.HEAD.getValidSlots();
+                            break;
+                        case ARMOR_CHEST:
+                            slots = new int[] {0, 5}; //amulet and body baubles slots
+                            break;
+                        case ARMOR_LEGS:
+                            slots = BaubleType.BELT.getValidSlots();
+                            break;
+                        case ALL:
+                        case ARMOR:
+                        case BREAKABLE:
+                        case WEARABLE:
+                            slots = BaubleType.TRINKET.getValidSlots();
+                            break;
+                    }
+
+                    if(slots != null) {
+                        for(int slot : slots) {
+                            final ItemStack stack = handler.getStackInSlot(slot);
+                            if(!stack.isEmpty()) validItems.add(stack);
+                        }
+                    }
+                }
+            }
         }
     }
 
