@@ -24,8 +24,9 @@ minecraft {
 }
 
 dependencies {
+    compileOnly "org.jetbrains:annotations:26.1.0"
     deobfCompile "com.github.jbredwards:Baubles:${baubles_version}"
-    deobfCompile "com.cleanroommc:configanytime:1.0"
+    deobfProvided "com.cleanroommc:configanytime:1.0"
 
     //cofhcore soulbound baubles fix
     deobfProvided "cofh:CoFHCore:1.12.2-${cofh_core_version}:universal"

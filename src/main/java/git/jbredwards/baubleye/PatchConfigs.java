@@ -19,6 +19,7 @@ package git.jbredwards.baubleye;
 import com.cleanroommc.configanytime.ConfigAnytime;
 import net.minecraftforge.common.config.Config;
 import org.apache.logging.log4j.LogManager;
+import org.jetbrains.annotations.ApiStatus;
 
 import javax.annotation.Nonnull;
 
@@ -27,44 +28,42 @@ import javax.annotation.Nonnull;
  * @author jbred
  *
  */
-@SuppressWarnings("BooleanMethodIsAlwaysInverted")
 @Config(modid = "baubleye", name = "baubleye_patches")
 public final class PatchConfigs
 {
+    /**
+     * Separate from config fields, so changing the config in-game doesn't have weird effects.
+     */
+    @Config.Ignore
+    public static final boolean creativeInventory, enchantments, itemSync, playerDrops;
+
     @Config.Ignore
     public static boolean failed = false;
 
+    @ApiStatus.Internal
     @Config.RequiresMcRestart
     @Config.LangKey("config.baubleye.enabled")
     public static boolean enabled = true;
 
+    @ApiStatus.Internal
     @Config.RequiresMcRestart
     @Config.LangKey("config.baubleye.patchBaublesMissingCreativeInventory")
     public static boolean patchBaublesCreativeInventory = true;
-    public static boolean patchBaublesCreativeInventory() {
-        return enabled && patchBaublesCreativeInventory;
-    }
 
+    @ApiStatus.Internal
     @Config.RequiresMcRestart
     @Config.LangKey("config.baubleye.patchBaublesEnchantments")
     public static boolean patchBaublesEnchantments = true;
-    public static boolean patchBaublesEnchantments() {
-        return enabled && patchBaublesEnchantments;
-    }
 
+    @ApiStatus.Internal
     @Config.RequiresMcRestart
     @Config.LangKey("config.baubleye.patchBaublesItemSync")
     public static boolean patchBaublesItemSync = true;
-    public static boolean patchBaublesItemSync() {
-        return enabled && patchBaublesItemSync;
-    }
 
+    @ApiStatus.Internal
     @Config.RequiresMcRestart
     @Config.LangKey("config.baubleye.patchBaublesPlayerDrops")
     public static boolean patchBaublesPlayerDrops = true;
-    public static boolean patchBaublesPlayerDrops() {
-        return enabled && patchBaublesPlayerDrops;
-    }
 
     /**
      * Initializes patch config settings using ConfigAnytime.
@@ -78,5 +77,10 @@ public final class PatchConfigs
             @Nonnull final String error = "ConfigAnytime mod is not present, \"baubleye_patches.cfg\" could not be read!";
             LogManager.getLogger("Baubley Elytra").warn(error, e);
         }
+
+        creativeInventory = failed || enabled && patchBaublesCreativeInventory;
+        enchantments = failed || enabled && patchBaublesEnchantments;
+        itemSync = failed || enabled && patchBaublesItemSync;
+        playerDrops = failed || enabled && patchBaublesPlayerDrops;
     }
 }

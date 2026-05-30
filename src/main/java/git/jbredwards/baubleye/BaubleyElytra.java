@@ -30,6 +30,8 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.client.resources.I18n;
+import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.EntityLivingBase;
@@ -43,19 +45,22 @@ import net.minecraft.network.PacketBuffer;
 import net.minecraft.util.EnumActionResult;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.client.resource.ISelectiveResourceReloadListener;
+import net.minecraftforge.client.resource.VanillaResourceType;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.common.config.Config;
 import net.minecraftforge.common.config.ConfigManager;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.fml.client.event.ConfigChangedEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.*;
+import net.minecraftforge.fml.common.event.FMLConstructionEvent;
+import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.relauncher.FMLLaunchHandler;
-import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraftforge.fml.relauncher.*;
 import net.minecraftforge.items.ItemHandlerHelper;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
@@ -78,7 +83,6 @@ import java.util.Objects;
 @IFMLLoadingPlugin.SortingIndex(1006)
 @IFMLLoadingPlugin.MCVersion("1.12.2")
 @IFMLLoadingPlugin.Name("Baubley Elytra Plugin")
-@Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.3.3", dependencies = "required-after:baubles")
 public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
 {
     /**
@@ -120,14 +124,14 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
 
                 //baubles item death drops handler is moved to this mod
                 if(isDropFix) {
-                    if(!PatchConfigs.patchBaublesPlayerDrops()) return basicClass;
+                    if(!PatchConfigs.playerDrops) return basicClass;
                     else classNode.methods.removeIf(method -> method.name.equals("playerDeath"));
                 }
 
                 //change the method baubles uses to detect button clicks from mousePressed to mouseReleased,
                 //and fix crash resulting from adding the baubles button to the creative inventory
                 else if(isCreativeFix) {
-                    if(!PatchConfigs.patchBaublesCreativeInventory()) return basicClass;
+                    if(!PatchConfigs.creativeInventory) return basicClass;
 
                     //remove old mousePressed()
                     classNode.methods.removeIf(methodIn -> methodIn.name.equals(FMLLaunchHandler.isDeobfuscatedEnvironment() ? "mousePressed" : "func_146116_c"));
@@ -167,9 +171,9 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
                     final boolean isPacketSync = "baubles.common.network.PacketSync".equals(transformedName);
                     final boolean isSlotBauble = "baubles.common.container.SlotBauble".equals(transformedName);
                     final boolean isEnchantment = "net.minecraft.enchantment.Enchantment".equals(transformedName);
-                    if(isPacketSync) { if(!PatchConfigs.patchBaublesItemSync()) return basicClass; }
-                    if(isSlotBauble) { if(!PatchConfigs.patchBaublesEnchantments()) return basicClass; }
-                    if(isEnchantment) { if(!PatchConfigs.patchBaublesEnchantments()) return basicClass; }
+                    if(isPacketSync) { if(!PatchConfigs.itemSync) return basicClass; }
+                    if(isSlotBauble) { if(!PatchConfigs.enchantments) return basicClass; }
+                    if(isEnchantment) { if(!PatchConfigs.enchantments) return basicClass; }
 
                     //use obfuscated method name if necessary
                     String methodName = FMLLaunchHandler.isDeobfuscatedEnvironment()
@@ -272,11 +276,8 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
         @Nonnull
         public static EnumActionResult equipElytraBauble(@Nonnull EntityPlayer player, @Nonnull ItemStack held, @Nonnull EnumActionResult result) {
             if(ItemHandlerHelper.insertItem(BaublesApi.getBaublesHandler(player), ItemHandlerHelper.copyStackWithSize(held, 1), player.world.isRemote).isEmpty()) {
-                if(!player.world.isRemote) {
-                    player.playSound(SoundEvents.ITEM_ARMOR_EQIIP_ELYTRA, 1, 1);
-                    held.shrink(1);
-                }
-
+                player.playSound(SoundEvents.ITEM_ARMOR_EQIIP_ELYTRA, 1, 1);
+                if(!player.world.isRemote) held.shrink(1);
                 return EnumActionResult.SUCCESS;
             }
 
@@ -342,13 +343,13 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
             if(entity instanceof EntityPlayer && ench.type != null) {
                 final IBaublesItemHandler handler = BaublesApi.getBaublesHandler((EntityPlayer)entity);
                 if(handler != null) {
-                    int[] slots = null;
+                    int[] slots = null; //some Baubles forks disable BaubleType.getValidSlots(), but those also patch enchantments so it kinda works out here lol
                     switch(ench.type) { //certain enchantments only apply to certain slots, my best attempt at translating that
                         case ARMOR_HEAD:
                             slots = BaubleType.HEAD.getValidSlots();
                             break;
                         case ARMOR_CHEST:
-                            slots = new int[] {0, 5}; //amulet and body baubles slots
+                            slots = ArrayUtils.addAll(BaubleType.AMULET.getValidSlots(), BaubleType.BODY.getValidSlots());
                             break;
                         case ARMOR_LEGS:
                             slots = BaubleType.BELT.getValidSlots();
@@ -414,6 +415,33 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
                     }
                 });
             }
+        }
+    }
+
+    @Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.3.3", dependencies = "required-after:baubles",
+    updateJSON = "https://api.modrinth.com/updates/baubley-elytra/forge_updates.json",
+    guiFactory = "git.jbredwards.baubleye.gui.BaubleyeGuiFactory")
+    public static final class Container
+    {
+        @Mod.EventHandler
+        static void construct(@Nonnull final FMLConstructionEvent event) {
+            if(PatchConfigs.creativeInventory || PatchConfigs.playerDrops) MinecraftForge.EVENT_BUS.register(EventBaubleFixer.class);
+        }
+
+        @SideOnly(Side.CLIENT)
+        @Mod.EventHandler
+        static void initClient(@Nonnull final FMLInitializationEvent event) {
+            @Nonnull final ModContainer container = Objects.requireNonNull(Loader.instance().activeModContainer());
+            ReflectionHelper.setPrivateValue(FMLModContainer.class, (FMLModContainer)container, ModContainer.Disableable.NEVER, "disableability");
+
+            @Nonnull final ModMetadata metadata = container.getMetadata();
+            @Nonnull final String creditsKey = metadata.credits, descriptionKey = metadata.description;
+            ((IReloadableResourceManager)Minecraft.getMinecraft().getResourceManager()).registerReloadListener((ISelectiveResourceReloadListener)(manager, condition) -> {
+                if(condition.test(VanillaResourceType.LANGUAGES)) {
+                    metadata.credits = I18n.format(creditsKey).replace("\\n", "\n");
+                    metadata.description = I18n.format(descriptionKey).replace("\\n", "\n");
+                }
+            });
         }
     }
 

@@ -34,7 +34,6 @@ import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.event.entity.player.PlayerDropsEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.registry.GameRegistry;
@@ -55,7 +54,6 @@ import javax.annotation.Nonnull;
  * @author jbred
  *
  */
-@Mod.EventBusSubscriber(modid = "baubleye")
 public final class EventBaubleFixer
 {
     @GameRegistry.ObjectHolder("cofhcore:soulbound") public static Enchantment COFH_SOULBOUND = null;
@@ -64,7 +62,7 @@ public final class EventBaubleFixer
     //properly handle the bauble items dropped when a player dies
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void handleBaublesDeathDrops(@Nonnull PlayerDropsEvent event) {
-        if(!PatchConfigs.patchBaublesPlayerDrops()) return;
+        if(!PatchConfigs.playerDrops) return;
 
         final EntityPlayer player = event.getEntityPlayer();
         if(player.world.getGameRules().getBoolean("keepInventory")) return;
@@ -90,7 +88,7 @@ public final class EventBaubleFixer
     //special code for cofh soulbound to decrease the enchantment level each time it gets used
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void keepBaubleSoulboundOnDeath(@Nonnull PlayerEvent.Clone event) {
-        if(PatchConfigs.patchBaublesPlayerDrops() && event.isWasDeath() && COFH_SOULBOUND != null) {
+        if(PatchConfigs.playerDrops && event.isWasDeath() && COFH_SOULBOUND != null) {
             final EntityPlayer newPlayer = event.getEntityPlayer();
             if(newPlayer instanceof FakePlayer || newPlayer.world.getGameRules().getBoolean("keepInventory")) return;
 
@@ -111,7 +109,7 @@ public final class EventBaubleFixer
     @SideOnly(Side.CLIENT)
     @SubscribeEvent(priority = EventPriority.NORMAL)
     static void addCreativeBaublesButton(@Nonnull GuiScreenEvent.InitGuiEvent.Post event) {
-        if(PatchConfigs.patchBaublesCreativeInventory() && BaubleyElytra.ConfigHandler.creativeAccessibility && event.getGui() instanceof GuiContainerCreative) {
+        if(PatchConfigs.creativeInventory && BaubleyElytra.ConfigHandler.creativeAccessibility && event.getGui() instanceof GuiContainerCreative) {
             final GuiContainerCreative gui = (GuiContainerCreative)event.getGui();
             event.getButtonList().add(new GuiBaublesButton(55, gui, 95, 6, 10, 10, I18n.format("button.baubles")) {
                 @Override

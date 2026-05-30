@@ -1,4 +1,29 @@
+configgui.baubleye.title=Baubley Elytra Configuration
+configgui.baubleye.general=General
+configgui.baubleye.general.tooltip=General settings.
+configgui.baubleye.patches=Patches
+configgui.baubleye.patches.tooltip=Patch settings.
+configgui.baubleye.patches_failed=Patches: §2True
+configgui.baubleye.patches_failed.tooltip=Install the ConfigAnytime mod to add patch settings!
+
 config.baubleye.creativeAccessibility=Creative Baubles Accessibility
-config.baubleye.creativeAccessibility.tooltip=True if the Baubles inventory button should be added to the creative inventory.
+config.baubleye.creativeAccessibility.tooltip=True if the Baubles inventory button should be added to the creative inventory. Only active while the creative inventory patch is also enabled.
 config.baubleye.slot=Elytra Bauble Slot
 config.baubleye.slot.tooltip=Possible values: AMULET, RING, BELT, TRINKET, HEAD, BODY, CHARM.
+
+config.baubleye.enabled=Enabled
+config.baubleye.enabled.tooltip=A setting that turns off all baubles patches. If this is left enabled, each patch can be configured independently.
+config.baubleye.patchBaublesMissingCreativeInventory=Baubles Creative Inventory Patch
+config.baubleye.patchBaublesMissingCreativeInventory.tooltip=Allows the baubles inventory to be accessed from the creative inventory. Also fixes a couple minor inventory bugs.
+config.baubleye.patchBaublesEnchantments=Baubles Enchantments Patch
+config.baubleye.patchBaublesEnchantments.tooltip=Allows baubles equipment to be included when enchantments scan for items that have them applied. Also fixes curse of binding not working for items in baubles slots.
+config.baubleye.patchBaublesItemSync=Baubles Inventory Sync Patch
+config.baubleye.patchBaublesItemSync.tooltip=Fixes baubles inventory synchronization code, so that items with capability data send their capability data to the client.
+config.baubleye.patchBaublesPlayerDrops=Baubles Player Loot Patch
+config.baubleye.patchBaublesPlayerDrops.tooltip=Makes baubles add all items in its slots to the player drops list before spawning them in the world. This fixes many interactions that rely on the player drops list, like gravestone mods. Also fixes curse of vanishing not working for items in baubles slots.
+
+mod.baubleye.credits=\n- jbredwards: creator and maintainer
+mod.baubleye.description=A small mod that lets players put their elytra in the baubles body slot.\nAlso fixes some baubles bugs.
+
+false=False
+true=True
