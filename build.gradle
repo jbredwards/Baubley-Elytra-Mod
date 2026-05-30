@@ -4,7 +4,7 @@ buildscript {
         maven { url 'https://files.minecraftforge.net/maven' }
     }
     dependencies {
-        classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
+        classpath 'com.anatawa12.forge:ForgeGradle:2.3-1.0.+'
     }
 }
 
@@ -25,6 +25,7 @@ minecraft {
 
 dependencies {
     deobfCompile "com.github.jbredwards:Baubles:${baubles_version}"
+    deobfCompile "com.cleanroommc:configanytime:1.0"
 
     //cofhcore soulbound baubles fix
     deobfProvided "cofh:CoFHCore:1.12.2-${cofh_core_version}:universal"
@@ -33,6 +34,7 @@ dependencies {
 
 repositories {
     maven { url 'https://jitpack.io' }
+    maven { url 'https://maven.cleanroommc.com' }
 
     //cofhcore soulbound baubles fix
     maven { url 'https://maven.covers1624.net' }

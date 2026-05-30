@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) <2026 to Present> <jbredwards>
+ *
+ * All rights are reserved, except where explicitly granted by the original
+ * copyright holder or where explicitly granted by the Mod Permissions License as
+ * published by Jbredwards, either version 1 of the License, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE.
+ *
+ * See the Mod Permissions License for more details
+ * <https://www.github.com/jbredwards/mod-permissions-license>.
+ */
+
 package git.jbredwards.baubleye;
 
 import baubles.api.BaublesApi;
@@ -48,6 +64,8 @@ public final class EventBaubleFixer
     //properly handle the bauble items dropped when a player dies
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void handleBaublesDeathDrops(@Nonnull PlayerDropsEvent event) {
+        if(!PatchConfigs.patchBaublesPlayerDrops()) return;
+
         final EntityPlayer player = event.getEntityPlayer();
         if(player.world.getGameRules().getBoolean("keepInventory")) return;
 
@@ -72,7 +90,7 @@ public final class EventBaubleFixer
     //special code for cofh soulbound to decrease the enchantment level each time it gets used
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void keepBaubleSoulboundOnDeath(@Nonnull PlayerEvent.Clone event) {
-        if(event.isWasDeath() && COFH_SOULBOUND != null) {
+        if(PatchConfigs.patchBaublesPlayerDrops() && event.isWasDeath() && COFH_SOULBOUND != null) {
             final EntityPlayer newPlayer = event.getEntityPlayer();
             if(newPlayer instanceof FakePlayer || newPlayer.world.getGameRules().getBoolean("keepInventory")) return;
 
@@ -93,7 +111,7 @@ public final class EventBaubleFixer
     @SideOnly(Side.CLIENT)
     @SubscribeEvent(priority = EventPriority.NORMAL)
     static void addCreativeBaublesButton(@Nonnull GuiScreenEvent.InitGuiEvent.Post event) {
-        if(BaubleyElytra.ConfigHandler.creativeAccessibility && event.getGui() instanceof GuiContainerCreative) {
+        if(PatchConfigs.patchBaublesCreativeInventory() && BaubleyElytra.ConfigHandler.creativeAccessibility && event.getGui() instanceof GuiContainerCreative) {
             final GuiContainerCreative gui = (GuiContainerCreative)event.getGui();
             event.getButtonList().add(new GuiBaublesButton(55, gui, 95, 6, 10, 10, I18n.format("button.baubles")) {
                 @Override
