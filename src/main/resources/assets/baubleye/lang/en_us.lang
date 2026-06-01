@@ -12,9 +12,9 @@ config.baubleye.slot=Elytra Bauble Slot
 config.baubleye.slot.tooltip=Possible values: AMULET, RING, BELT, TRINKET, HEAD, BODY, CHARM.
 
 config.baubleye.enabled=Enabled
-config.baubleye.enabled.tooltip=A setting that turns off all baubles patches. If this is left enabled, each patch can be configured independently.
-config.baubleye.patchBaublesMissingCreativeInventory=Baubles Creative Inventory Patch
-config.baubleye.patchBaublesMissingCreativeInventory.tooltip=Allows the baubles inventory to be accessed from the creative inventory. Also fixes a couple minor inventory bugs.
+config.baubleye.enabled.tooltip=A setting that turns off all baubles patches. If this is left enabled, each patch can be toggled independently.
+config.baubleye.patchBaublesCreativeInventory=Baubles Creative Inventory Patch
+config.baubleye.patchBaublesCreativeInventory.tooltip=Allows the baubles inventory to be accessed from the creative inventory. Also fixes a couple minor inventory bugs.
 config.baubleye.patchBaublesEnchantments=Baubles Enchantments Patch
 config.baubleye.patchBaublesEnchantments.tooltip=Allows baubles equipment to be included when enchantments scan for items that have them applied. Also fixes curse of binding not working for items in baubles slots.
 config.baubleye.patchBaublesItemSync=Baubles Inventory Sync Patch

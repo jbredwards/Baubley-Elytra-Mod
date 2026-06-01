@@ -57,6 +57,7 @@ import net.minecraftforge.fml.client.event.ConfigChangedEvent;
 import net.minecraftforge.fml.common.*;
 import net.minecraftforge.fml.common.event.FMLConstructionEvent;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.relauncher.*;
 import net.minecraftforge.items.ItemHandlerHelper;
@@ -364,6 +365,7 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
 
                     if(slots != null) {
                         for(int slot : slots) {
+                            if(slot < 0 || slot >= handler.getSlots()) continue;
                             final ItemStack stack = handler.getStackInSlot(slot);
                             if(!stack.isEmpty()) validItems.add(stack);
                         }
@@ -418,7 +420,7 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
         }
     }
 
-    @Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.3.3", dependencies = "required-after:baubles",
+    @Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.3.4",dependencies = "required-after:baubles;after:colytra@[1.2.0.4,)",
     updateJSON = "https://api.modrinth.com/updates/baubley-elytra/forge_updates.json",
     guiFactory = "git.jbredwards.baubleye.gui.BaubleyeGuiFactory")
     public static final class Container
@@ -426,6 +428,11 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
         @Mod.EventHandler
         static void construct(@Nonnull final FMLConstructionEvent event) {
             if(PatchConfigs.creativeInventory || PatchConfigs.playerDrops) MinecraftForge.EVENT_BUS.register(EventBaubleFixer.class);
+        }
+
+        @Mod.EventHandler
+        static void preInit(@Nonnull final FMLPreInitializationEvent event) throws ReflectiveOperationException {
+            ColytraHandler.init(); // Throws ClassNotFoundException if Colytra is not present.
         }
 
         @SideOnly(Side.CLIENT)

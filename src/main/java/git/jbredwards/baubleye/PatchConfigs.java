@@ -47,7 +47,7 @@ public final class PatchConfigs
 
     @ApiStatus.Internal
     @Config.RequiresMcRestart
-    @Config.LangKey("config.baubleye.patchBaublesMissingCreativeInventory")
+    @Config.LangKey("config.baubleye.patchBaublesCreativeInventory")
     public static boolean patchBaublesCreativeInventory = true;
 
     @ApiStatus.Internal
@@ -74,7 +74,7 @@ public final class PatchConfigs
         catch(@Nonnull final Throwable e) {
             failed = true;
 
-            @Nonnull final String error = "ConfigAnytime mod is not present, \"baubleye_patches.cfg\" could not be read!";
+            @Nonnull final String error = "\"baubleye_patches.cfg\" could not be read!";
             LogManager.getLogger("Baubley Elytra").warn(error, e);
         }
 
