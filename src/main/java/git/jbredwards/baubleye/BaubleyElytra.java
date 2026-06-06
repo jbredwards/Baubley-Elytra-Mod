@@ -420,7 +420,7 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
         }
     }
 
-    @Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.3.4",dependencies = "required-after:baubles;after:colytra@[1.2.0.4,)",
+    @Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.3.5",dependencies = "required-after:baubles;after:colytra@[1.2.0.4,)",
     updateJSON = "https://api.modrinth.com/updates/baubley-elytra/forge_updates.json",
     guiFactory = "git.jbredwards.baubleye.gui.BaubleyeGuiFactory")
     public static final class Container
@@ -431,8 +431,9 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
         }
 
         @Mod.EventHandler
-        static void preInit(@Nonnull final FMLPreInitializationEvent event) throws ReflectiveOperationException {
-            ColytraHandler.init(); // Throws ClassNotFoundException if Colytra is not present.
+        static void preInit(@Nonnull final FMLPreInitializationEvent event) {
+            try { ColytraHandler.init(); } // Throws ClassNotFoundException if Colytra is not present.
+            catch(@Nonnull final ReflectiveOperationException ignored) {}
         }
 
         @SideOnly(Side.CLIENT)
