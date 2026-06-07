@@ -330,7 +330,7 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
 
         @SideOnly(Side.CLIENT)
         public static void onBaublesButtonMouseReleased(@Nonnull GuiContainer parentGui) {
-            ButtonSoundPlayer.playButtonClickSound();
+            ClientHelper.playButtonClickSound();
             //open parent inventory
             if(parentGui instanceof GuiPlayerExpanded) {
                 ((GuiPlayerExpanded)parentGui).displayNormalInventory();
@@ -375,12 +375,27 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
         }
     }
 
-    //needed to fix issue#3, prevents client class from being loaded serverside
-    private static class ButtonSoundPlayer
+    //needed to fix issue#3 & issue#9, prevents client class from being loaded serverside
+    private static class ClientHelper
     {
         @SideOnly(Side.CLIENT)
         static void playButtonClickSound() {
             Minecraft.getMinecraft().getSoundHandler().playSound(PositionedSoundRecord.getMasterRecord(SoundEvents.UI_BUTTON_CLICK, 1));
+        }
+
+        @SideOnly(Side.CLIENT)
+        static void initClient() {
+            @Nonnull final ModContainer container = Objects.requireNonNull(Loader.instance().activeModContainer());
+            ReflectionHelper.setPrivateValue(FMLModContainer.class, (FMLModContainer)container, ModContainer.Disableable.NEVER, "disableability");
+
+            @Nonnull final ModMetadata metadata = container.getMetadata();
+            @Nonnull final String creditsKey = metadata.credits, descriptionKey = metadata.description;
+            ((IReloadableResourceManager)Minecraft.getMinecraft().getResourceManager()).registerReloadListener((ISelectiveResourceReloadListener)(manager, condition) -> {
+                if(condition.test(VanillaResourceType.LANGUAGES)) {
+                    metadata.credits = I18n.format(creditsKey).replace("\\n", "\n");
+                    metadata.description = I18n.format(descriptionKey).replace("\\n", "\n");
+                }
+            });
         }
     }
 
@@ -420,7 +435,7 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
         }
     }
 
-    @Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.3.5",dependencies = "required-after:baubles;after:colytra@[1.2.0.4,)",
+    @Mod(modid = "baubleye", name = "Baubley Elytra", version = "1.3.6", dependencies = "required-after:baubles;after:colytra@[1.2.0.4,)",
     updateJSON = "https://api.modrinth.com/updates/baubley-elytra/forge_updates.json",
     guiFactory = "git.jbredwards.baubleye.gui.BaubleyeGuiFactory")
     public static final class Container
@@ -439,17 +454,9 @@ public final class BaubleyElytra implements IFMLLoadingPlugin, Opcodes
         @SideOnly(Side.CLIENT)
         @Mod.EventHandler
         static void initClient(@Nonnull final FMLInitializationEvent event) {
-            @Nonnull final ModContainer container = Objects.requireNonNull(Loader.instance().activeModContainer());
-            ReflectionHelper.setPrivateValue(FMLModContainer.class, (FMLModContainer)container, ModContainer.Disableable.NEVER, "disableability");
-
-            @Nonnull final ModMetadata metadata = container.getMetadata();
-            @Nonnull final String creditsKey = metadata.credits, descriptionKey = metadata.description;
-            ((IReloadableResourceManager)Minecraft.getMinecraft().getResourceManager()).registerReloadListener((ISelectiveResourceReloadListener)(manager, condition) -> {
-                if(condition.test(VanillaResourceType.LANGUAGES)) {
-                    metadata.credits = I18n.format(creditsKey).replace("\\n", "\n");
-                    metadata.description = I18n.format(descriptionKey).replace("\\n", "\n");
-                }
-            });
+            // For some reason, the SideOnly annotation doesn't work here?
+            // So we check if is client manually, and move client logic to separate class...
+            if(FMLLaunchHandler.side().isClient()) ClientHelper.initClient();
         }
     }
 
